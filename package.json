@@ -1,0 +1,20 @@
+{
+  "name": "client-services",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc && cp -r src/web/public dist/web/public",
+    "job": "node --env-file=.env dist/run.js",
+    "dev": "tsx --env-file=.env src/run.ts",
+    "fetch-schema": "tsx --env-file=.env src/tools/fetch-schema.ts",
+    "register": "tsx --env-file=.env src/tools/register.ts"
+  },
+  "dependencies": {
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0"
+  }
+}

@@ -1,0 +1,39 @@
+services:
+  # Dashboard — static frontend + API proxy
+  - type: web
+    name: dashboard
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: node dist/web/server.js
+    envVars:
+      - key: AZAVA_API_URL
+        fromGroup: azava
+      - key: AZAVA_API_KEY
+        fromGroup: azava
+
+  # Cron jobs — one entry per scheduled task
+  # Each runs: node dist/run.js <job-name>
+
+  - type: cron
+    name: example-sync
+    runtime: node
+    schedule: "0 8 * * 1-5" # Weekdays at 8am UTC
+    buildCommand: npm install && npm run build
+    startCommand: node dist/run.js example-sync
+    envVars:
+      - key: AZAVA_API_URL
+        fromGroup: azava
+      - key: AZAVA_API_KEY
+        fromGroup: azava
+      - key: NOTIFY_WEBHOOK_URL
+        fromGroup: azava
+
+envVarGroups:
+  - name: azava
+    envVars:
+      - key: AZAVA_API_URL
+        sync: false
+      - key: AZAVA_API_KEY
+        sync: false
+      - key: NOTIFY_WEBHOOK_URL
+        sync: false
