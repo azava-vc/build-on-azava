@@ -1,25 +1,31 @@
 services:
-  # Dashboard — static frontend + API proxy
+  # Dashboard — Next.js app
   - type: web
     name: dashboard
     runtime: node
     buildCommand: npm install && npm run build
-    startCommand: node dist/web/server.js
+    startCommand: npm start
     envVars:
       - key: AZAVA_API_URL
         fromGroup: azava
       - key: AZAVA_API_KEY
         fromGroup: azava
+      - key: AZAVA_OAUTH_CLIENT_ID
+        fromGroup: azava
+      - key: AZAVA_OAUTH_CLIENT_SECRET
+        fromGroup: azava
+      - key: SESSION_SECRET
+        fromGroup: azava
 
   # Cron jobs — one entry per scheduled task
-  # Each runs: node dist/run.js <job-name>
+  # Each runs: npx tsx src/run.ts <job-name>
 
   - type: cron
     name: example-sync
     runtime: node
     schedule: "0 8 * * 1-5" # Weekdays at 8am UTC
-    buildCommand: npm install && npm run build
-    startCommand: node dist/run.js example-sync
+    buildCommand: npm install
+    startCommand: npx tsx src/run.ts example-sync
     envVars:
       - key: AZAVA_API_URL
         fromGroup: azava
@@ -36,4 +42,10 @@ envVarGroups:
       - key: AZAVA_API_KEY
         sync: false
       - key: NOTIFY_WEBHOOK_URL
+        sync: false
+      - key: AZAVA_OAUTH_CLIENT_ID
+        sync: false
+      - key: AZAVA_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: SESSION_SECRET
         sync: false

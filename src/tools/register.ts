@@ -8,7 +8,7 @@
  * for you to add to your deployment's environment.
  */
 
-import { config } from "../config.js";
+import { config } from "../config";
 
 const deploymentUrl = process.argv[2];
 

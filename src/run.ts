@@ -1,4 +1,4 @@
-import { notify } from "./lib/notify.js";
+import { notify } from "./lib/notify";
 
 const jobName = process.argv[2];
 
@@ -12,7 +12,7 @@ async function main() {
   console.log(`[${jobName}] starting`);
 
   try {
-    const mod = await import(`./jobs/${jobName}.js`);
+    const mod = await import(`./jobs/${jobName}`);
     await mod.default();
     console.log(`[${jobName}] completed in ${Date.now() - start}ms`);
   } catch (err) {

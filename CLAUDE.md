@@ -1,25 +1,27 @@
-# Client Services
+# build-on-azava
 
-This repo contains cron jobs and a dashboard for a client workspace, deployed to Render. It connects to Azava, a knowledge graph platform, via its API.
+This repo is a starter template for building dashboards, jobs, and internal tools on top of an Azava workspace. It connects to Azava via REST API.
 
 ## Structure
 
 ```
 src/
-├── jobs/           # Cron jobs — each file exports a default async function
-├── web/
-│   ├── server.ts   # Dashboard server: static files + named query handler
-│   ├── queries.ts  # Named queries — all data access is defined here
-│   └── public/     # Dashboard frontend — plain HTML/JS/CSS, no framework
+├── app/              # Next.js App Router — pages, layouts, API routes
+│   ├── layout.tsx    # Root layout
+│   ├── page.tsx      # Home page (server component)
+│   ├── api/          # API routes (for client-side data fetching)
+│   └── auth/         # OAuth route handlers (login, callback, logout)
 ├── lib/
-│   ├── azava.ts    # Typed Azava API client (server-side only)
-│   ├── auth.ts     # OAuth "Login with Azava" — session cookies + user identity
-│   └── notify.ts   # Failure notifications (Slack webhook)
+│   ├── azava.ts      # Typed Azava API client (server-side only)
+│   ├── auth.ts       # Session helpers + getUser()
+│   └── notify.ts     # Failure notifications (Slack webhook)
+├── jobs/             # Cron jobs — each file exports a default async function
 ├── tools/
 │   ├── fetch-schema.ts  # Pulls live schema into data/
 │   └── register.ts      # One-time OAuth client registration
-├── config.ts       # Env var validation
-└── run.ts          # Job runner entry point
+├── middleware.ts     # Auth gate (active only when OAuth env vars are set)
+├── config.ts         # Env var validation
+└── run.ts            # Job runner entry point
 ```
 
 ## Getting Started
@@ -35,76 +37,71 @@ Before building anything, run `npm run fetch-schema`. This populates:
 - **`data/schema.md`** — human-readable summary of all node types, edge types, and their relationships
 - **`data/schema.json`** — full schema response from the API
 
-Read `data/schema.md` to understand what data is available before building dashboard views or writing jobs.
+Read `data/schema.md` to understand what data is available before building pages or writing jobs.
 
-## Architecture: Named Queries
+## Building Pages
 
-The dashboard does NOT have direct access to the Azava API. All data access goes through **named queries** defined in `src/web/queries.ts`.
+This is a Next.js app using the App Router. Pages are React server components by default — they run on the server and can fetch data directly from the Azava API.
 
-This is a deliberate security boundary:
-- The API key lives server-side only, never exposed to the browser
-- The frontend can only call queries that are explicitly defined
-- Cypher queries are authored server-side with safe parameterisation
-- The frontend supplies parameters, the server constructs the query
+### Server components (default — use for most pages)
 
-### Defining queries (server-side)
-
-Add queries in `src/web/queries.ts`:
+Server components fetch data at request time. The API key stays server-side automatically.
 
 ```typescript
-export const queries = {
-  // Simple passthrough to a typed API method
-  schema: query(z.object({}), async () => {
-    return azava.schema();
-  }),
+// src/app/my-page/page.tsx
+import { azava } from "@/lib/azava";
 
-  // Parameterised Cypher — use $paramName in the query, pass values in params object
-  "deals-by-stage": query(
-    z.object({
-      stage: z.string().optional(),
-      limit: z.coerce.number().int().positive().max(100).default(20),
-    }),
-    async (params) => {
-      const cypher = params.stage
-        ? `MATCH (c:Company) WHERE c.stage = $stage RETURN c ORDER BY c.created_at DESC`
-        : `MATCH (c:Company) RETURN c ORDER BY c.created_at DESC`;
-      return azava.cypher(cypher, {
-        params: params.stage ? { stage: params.stage } : undefined,
-        limit: params.limit,
-      });
-    },
-  ),
-};
+export const dynamic = "force-dynamic";
+
+export default async function MyPage() {
+  const nodes = await azava.nodes({ type: "company", limit: 20 });
+  return (
+    <div>
+      {nodes.map((n: any) => (
+        <div key={n.id}>{n.label}</div>
+      ))}
+    </div>
+  );
+}
 ```
 
-### Calling queries (frontend)
+### API routes (for client-side interactivity)
 
-From any HTML/JS page in `src/web/public/`:
+When you need client-side fetching (search-as-you-type, infinite scroll, etc.), create an API route:
 
-```javascript
-// GET /query/<name>?param=value
-const schema = await fetch("/query/schema").then(r => r.json());
-const deals = await fetch("/query/deals-by-stage?stage=Series+A&limit=10").then(r => r.json());
+```typescript
+// src/app/api/search/route.ts
+import { azava } from "@/lib/azava";
 
-// List all available queries
-const { queries } = await fetch("/queries").then(r => r.json());
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const results = await azava.nodes({ search: searchParams.get("q") ?? "" });
+  return Response.json(results);
+}
 ```
 
-### Workflow for adding a new dashboard view
+Then fetch from a client component:
+
+```typescript
+"use client";
+const results = await fetch(`/api/search?q=${query}`).then(r => r.json());
+```
+
+### Workflow for adding a new page
 
 1. Read `data/schema.md` to understand what node types, edge types, and properties exist
-2. Add a named query in `src/web/queries.ts` that fetches the data you need
-3. Create or edit an HTML page in `src/web/public/` that calls the query
-4. Test locally with `npm run build && node dist/web/server.js`
+2. Create a new directory under `src/app/` with a `page.tsx` file
+3. Fetch data using `azava` in a server component, or create an API route for client-side needs
+4. Test locally with `npm run dev`
 
 ## Azava API Client
 
-`src/lib/azava.ts` is the typed client used by queries and jobs. It is server-side only.
+`src/lib/azava.ts` is the typed client used by pages and jobs. It is **server-side only** — never import it in a `"use client"` component.
 
 ### Reading data
 
 ```typescript
-import { azava } from "../lib/azava.js";
+import { azava } from "@/lib/azava";
 
 const schema = await azava.schema();
 const nodes = await azava.nodes({ type: "company", search: "acme", limit: 20 });
@@ -120,7 +117,7 @@ const results = await azava.cypher(
 ### Writing data (for jobs)
 
 ```typescript
-import { azava } from "../lib/azava.js";
+import { azava } from "@/lib/azava";
 
 await azava.ingest({
   title: "Deal: Acme Corp Series A",
@@ -136,22 +133,7 @@ await azava.ingest({ title: "Memo", attachments: [attachment] });
 
 1. Create `src/jobs/my-job.ts` with a default export async function
 2. Add a cron entry to `render.yaml`
-3. Test locally: `npm run dev my-job`
-
-## Building Dashboard Pages
-
-The dashboard is plain HTML/JS/CSS in `src/web/public/`. No build step, no framework.
-
-**Important:** The frontend cannot call the Azava API directly. All data access must go through named queries in `src/web/queries.ts`. If you need data the frontend doesn't have access to, add a new named query first.
-
-Add new pages as HTML files in `src/web/public/` and link to them from `index.html`.
-
-## Deploying
-
-This repo deploys to Render via `render.yaml`. Push to main to deploy.
-
-- Cron jobs and the dashboard share the same env var group (`azava`)
-- Set env vars in the Render dashboard under the `azava` env group
+3. Test locally: `npm run job my-job`
 
 ## Authentication: Login with Azava
 
@@ -160,7 +142,7 @@ Auth is for **internal team tools only** — dashboards, admin panels, tools whe
 ### When to use auth
 
 - The tool is for a specific team's internal use
-- You need to identify which user is making requests (e.g. to show user-specific data or log who did what)
+- You need to identify which user is making requests
 - You want to restrict access to team members only
 
 ### When NOT to use auth
@@ -169,43 +151,22 @@ Auth is for **internal team tools only** — dashboards, admin panels, tools whe
 - There's no reason to know who the user is
 - The tool is a simple data display with no user-specific behavior
 
-### How to wire up auth
+### How it works
 
-1. Import and call `setupAuth` in `src/web/server.ts`:
+Auth is controlled entirely by environment variables. If `AZAVA_OAUTH_CLIENT_ID`, `AZAVA_OAUTH_CLIENT_SECRET`, and `SESSION_SECRET` are set, the middleware in `src/middleware.ts` gates all routes — users must log in via Azava before accessing any page. If these env vars are not set, the middleware does nothing and the app is fully public.
 
-```typescript
-import { setupAuth } from "../lib/auth.js";
+No code changes are needed to enable or disable auth — just set or remove the env vars.
 
-// After creating the server, before server.listen():
-setupAuth(server);
-```
-
-2. Use `requireAuth` in query handlers to gate access:
+### Accessing user identity in pages
 
 ```typescript
-import { requireAuth } from "../lib/auth.js";
+import { getUser } from "@/lib/auth";
 
-"my-query": query(z.object({}), async (_params, req, res) => {
-  const user = requireAuth(req, res);
-  if (!user) return; // already redirected to login
-  // user.userId and user.teamId are now available
-  return azava.cypher("...");
-}),
+export default async function MyPage() {
+  const user = await getUser(); // { userId, teamId } or null
+  // ...
+}
 ```
-
-3. Use `getUser` for optional identity (doesn't redirect):
-
-```typescript
-import { getUser } from "../lib/auth.js";
-
-const user = getUser(req); // null if not logged in
-```
-
-### How auth works
-
-- Auth provides **user identity only** (userId, teamId). It does NOT grant API access — data queries still use the workspace `AZAVA_API_KEY`.
-- Users authenticate via "Login with Azava" (OAuth). They must be a member of the team associated with the tool's API key.
-- Sessions are stored in signed cookies (7 days). No server-side session store needed.
 
 ### Registering an OAuth client
 
@@ -229,7 +190,17 @@ SESSION_SECRET=              # stable random string for signing session cookies
 
 | Command | Purpose |
 |---------|---------|
-| `npm run dev <job>` | Run a job locally |
+| `npm run dev` | Start Next.js dev server |
+| `npm run build` | Build for production |
+| `npm start` | Start production server |
+| `npm run job <name>` | Run a job locally |
 | `npm run fetch-schema` | Pull live schema into `data/` |
 | `npm run register <url>` | Register OAuth client for a deployment |
-| `npm run build` | Compile TypeScript + copy static files |
+
+## Deploying
+
+This repo deploys to Render via `render.yaml`. Push to main to deploy.
+
+- Cron jobs and the dashboard share the same env var group (`azava`)
+- Set env vars in the Render dashboard under the `azava` env group
+- If using auth, add the OAuth and session secret vars to the env group

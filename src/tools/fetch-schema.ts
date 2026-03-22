@@ -1,5 +1,5 @@
 import { writeFile, mkdir } from "node:fs/promises";
-import { azava } from "../lib/azava.js";
+import { azava } from "../lib/azava";
 
 async function main() {
   console.log("Fetching schema from Azava...");

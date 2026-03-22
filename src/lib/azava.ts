@@ -1,4 +1,4 @@
-import { config } from "../config.js";
+import { config } from "../config";
 
 type ContentType = "DEALFLOW" | "INVESTOR_UPDATE" | "REQUEST" | "UNKNOWN" | "COMPANY_INFO";
 

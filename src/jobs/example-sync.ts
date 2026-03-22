@@ -1,4 +1,4 @@
-import { azava } from "../lib/azava.js";
+import { azava } from "../lib/azava";
 
 export default async function exampleSync() {
   // Replace with your actual data source

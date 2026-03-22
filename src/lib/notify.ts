@@ -1,4 +1,4 @@
-import { config } from "../config.js";
+import { config } from "../config";
 
 export async function notify(message: string) {
   console.log(message);
