@@ -36,9 +36,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Build callback URL (must match what was sent in the authorize request)
-  const proto = request.headers.get("x-forwarded-proto") ?? "http";
-  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "localhost:3000";
-  const callbackUrl = `${proto}://${host}/auth/callback`;
+  const callbackUrl = `${request.nextUrl.origin}/auth/callback`;
 
   // Exchange code for token (server-to-server)
   const tokenRes = await fetch(`${appUrl}/oauth/cs/token`, {
@@ -84,7 +82,7 @@ export async function GET(request: NextRequest) {
     sameSite: "lax",
     path: "/",
     maxAge,
-    secure: appUrl.startsWith("https"),
+    secure: request.nextUrl.protocol === "https:",
   });
 
   // Clear PKCE cookie

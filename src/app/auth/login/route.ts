@@ -17,9 +17,7 @@ export async function GET(request: NextRequest) {
   const returnUrl = request.nextUrl.searchParams.get("returnUrl") ?? "/";
 
   // Build callback URL from the incoming request
-  const proto = request.headers.get("x-forwarded-proto") ?? "http";
-  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "localhost:3000";
-  const callbackUrl = `${proto}://${host}/auth/callback`;
+  const callbackUrl = `${request.nextUrl.origin}/auth/callback`;
 
   const params = new URLSearchParams({
     response_type: "code",
@@ -38,7 +36,7 @@ export async function GET(request: NextRequest) {
     sameSite: "lax",
     path: "/",
     maxAge: 600,
-    secure: appUrl.startsWith("https"),
+    secure: request.nextUrl.protocol === "https:",
   });
 
   return response;

@@ -5,8 +5,8 @@ services:
     runtime: node
     buildCommand: npm install && npm run build
     startCommand: npm start
-    envVarGroups:
-      - azava
+    envVars:
+      - fromGroup: azava
 
   # Cron jobs — one entry per scheduled task
   # Each runs: npx tsx src/run.ts <job-name>
@@ -17,8 +17,8 @@ services:
     schedule: "0 8 * * 1-5" # Weekdays at 8am UTC
     buildCommand: npm install
     startCommand: npx tsx src/run.ts example-sync
-    envVarGroups:
-      - azava
+    envVars:
+      - fromGroup: azava
 
 envVarGroups:
   - name: azava
