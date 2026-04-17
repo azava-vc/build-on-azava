@@ -2,7 +2,19 @@
 
 Build dashboards, jobs, and internal tools on top of your Azava workspace.
 
-## Setup
+## Getting started
+
+Create your own project from this template:
+
+```bash
+# 1. Create a new private repo on GitHub, then:
+git clone https://github.com/azava-com/build-on-azava.git my-tool
+cd my-tool
+git remote set-url origin git@github.com:YOUR_ORG/my-tool.git
+git push -u origin main
+```
+
+Then set up your environment:
 
 ```bash
 cp .env.example .env
@@ -13,7 +25,13 @@ npm run fetch-schema
 npm run dev
 ```
 
-Open [localhost:3000](http://localhost:3000) to see the dashboard.
+To pull in future framework updates from build-on-azava:
+
+```bash
+git remote add upstream https://github.com/azava-com/build-on-azava.git
+git fetch upstream
+git merge upstream/main
+```
 
 ## What you can build
 
