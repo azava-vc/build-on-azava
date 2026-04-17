@@ -242,4 +242,5 @@ This repo deploys to Render via `render.yaml`. Push to main to deploy.
 
 - Cron jobs and the dashboard share the same env var group (`azava`)
 - Set env vars in the Render dashboard under the `azava` env group
-- If using auth, add the OAuth and session secret vars to the env group
+- If using auth, run `npm run register <deployed-url>` and add the OAuth vars to the env group
+- **Never commit secrets or API keys to `render.yaml` or anywhere in the repo** — all env vars use `sync: false` and must be set in the Render dashboard

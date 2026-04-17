@@ -5,17 +5,8 @@ services:
     runtime: node
     buildCommand: npm install && npm run build
     startCommand: npm start
-    envVars:
-      - key: AZAVA_API_URL
-        fromGroup: azava
-      - key: AZAVA_API_KEY
-        fromGroup: azava
-      - key: AZAVA_OAUTH_CLIENT_ID
-        fromGroup: azava
-      - key: AZAVA_OAUTH_CLIENT_SECRET
-        fromGroup: azava
-      - key: SESSION_SECRET
-        fromGroup: azava
+    envVarGroups:
+      - azava
 
   # Cron jobs — one entry per scheduled task
   # Each runs: npx tsx src/run.ts <job-name>
@@ -26,13 +17,8 @@ services:
     schedule: "0 8 * * 1-5" # Weekdays at 8am UTC
     buildCommand: npm install
     startCommand: npx tsx src/run.ts example-sync
-    envVars:
-      - key: AZAVA_API_URL
-        fromGroup: azava
-      - key: AZAVA_API_KEY
-        fromGroup: azava
-      - key: NOTIFY_WEBHOOK_URL
-        fromGroup: azava
+    envVarGroups:
+      - azava
 
 envVarGroups:
   - name: azava
@@ -40,6 +26,8 @@ envVarGroups:
       - key: AZAVA_API_URL
         sync: false
       - key: AZAVA_API_KEY
+        sync: false
+      - key: AZAVA_APP_URL
         sync: false
       - key: NOTIFY_WEBHOOK_URL
         sync: false
