@@ -23,11 +23,11 @@ const baseUrl = deploymentUrl.replace(/\/$/, "");
 const redirectUri = `${baseUrl}/auth/callback`;
 
 console.log(`Registering OAuth client...`);
-console.log(`  Platform: ${config.AZAVA_API_URL}`);
+console.log(`  Platform: ${config.AZAVA_APP_URL}`);
 console.log(`  Redirect URI: ${redirectUri}`);
 console.log();
 
-const res = await fetch(`${config.AZAVA_API_URL}/oauth/cs/register`, {
+const res = await fetch(`${config.AZAVA_APP_URL}/oauth/cs/register`, {
   method: "POST",
   headers: {
     "Content-Type": "application/json",

@@ -39,6 +39,8 @@ Before building anything, run `npm run fetch-schema`. This populates:
 
 Read `data/schema.md` to understand what data is available before building pages or writing jobs.
 
+**Important:** `data/schema.json` contains `enumValues` for properties (e.g. Task Status, Priority). Always check these before hardcoding column names, filter options, or validation lists — `schema.md` doesn't include them.
+
 ## Building Pages
 
 This is a Next.js app using the App Router. Pages are React server components by default — they run on the server and can fetch data directly from the Azava API.
@@ -105,16 +107,23 @@ import { azava } from "@/lib/azava";
 
 const schema = await azava.schema();
 const nodes = await azava.nodes({ type: "company", search: "acme", limit: 20 });
+// nodes() returns { data: [...], meta: { count, offset, limit } }
 const node = await azava.node("node-id");
 const edges = await azava.edges("node-id");
-// Cypher with parameterised values (use $paramName — never interpolate user input)
+// Cypher supports reads and writes (MATCH, SET, CREATE, DELETE, etc.)
+// Use $paramName for parameterised values — never interpolate user input
 const results = await azava.cypher(
   "MATCH (n:Company) WHERE n.stage = $stage RETURN n",
   { params: { stage: "Series A" }, limit: 50 },
 );
+// Node IDs: use `WHERE n = $id` to match by ID (not id(n) or n._id)
+// Example write:
+// azava.cypher("MATCH (t:Task) WHERE t = $id SET t.Status = $status RETURN t", { params: { id, status } })
 ```
 
 ### Writing data (for jobs)
+
+**`ingest` is for unstructured data payloads only** — emails, messages, documents that Azava needs to process and extract from. Do NOT use `ingest` for simple property updates (e.g. changing a task's status). Use the appropriate REST endpoint for direct mutations.
 
 ```typescript
 import { azava } from "@/lib/azava";
@@ -128,6 +137,10 @@ await azava.ingest({
 const attachment = await azava.uploadDocument(blob, { filename: "memo.pdf", contentType: "application/pdf" });
 await azava.ingest({ title: "Memo", attachments: [attachment] });
 ```
+
+### Cypher queries
+
+Cypher supports both reads and writes — use it for property updates, node creation, etc.
 
 ## Adding a Cron Job
 
@@ -184,6 +197,7 @@ This prints `AZAVA_OAUTH_CLIENT_ID` and `AZAVA_OAUTH_CLIENT_SECRET` — add them
 AZAVA_OAUTH_CLIENT_ID=       # from: npm run register <url>
 AZAVA_OAUTH_CLIENT_SECRET=   # from: npm run register <url>
 SESSION_SECRET=              # stable random string for signing session cookies
+AZAVA_APP_URL=               # optional, defaults to https://app.azava.com — OAuth endpoints live here (not on AZAVA_API_URL)
 ```
 
 ## Commands

@@ -5,9 +5,9 @@ import { generatePKCE, PKCE_COOKIE } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   const clientId = process.env.AZAVA_OAUTH_CLIENT_ID;
-  const azavaUrl = process.env.AZAVA_API_URL?.replace(/\/$/, "");
+  const appUrl = (process.env.AZAVA_APP_URL ?? "https://app.azava.com").replace(/\/$/, "");
 
-  if (!clientId || !azavaUrl) {
+  if (!clientId) {
     return new NextResponse("Auth is not configured", { status: 500 });
   }
 
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     state,
   });
 
-  const response = NextResponse.redirect(`${azavaUrl}/oauth/cs/authorize?${params}`);
+  const response = NextResponse.redirect(`${appUrl}/oauth/cs/authorize?${params}`);
 
   // Store PKCE verifier, state, and returnUrl in a short-lived cookie
   response.cookies.set(PKCE_COOKIE, JSON.stringify({ verifier, state, returnUrl }), {
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     sameSite: "lax",
     path: "/",
     maxAge: 600,
-    secure: azavaUrl.startsWith("https"),
+    secure: appUrl.startsWith("https"),
   });
 
   return response;

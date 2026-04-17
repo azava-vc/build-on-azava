@@ -3,11 +3,11 @@ import type { NextRequest } from "next/server";
 import { SESSION_COOKIE, PKCE_COOKIE, signSession, sessionMaxAge } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
-  const azavaUrl = process.env.AZAVA_API_URL?.replace(/\/$/, "");
+  const appUrl = (process.env.AZAVA_APP_URL ?? "https://app.azava.com").replace(/\/$/, "");
   const clientId = process.env.AZAVA_OAUTH_CLIENT_ID;
   const clientSecret = process.env.AZAVA_OAUTH_CLIENT_SECRET;
 
-  if (!azavaUrl || !clientId || !clientSecret) {
+  if (!clientId || !clientSecret) {
     return new NextResponse("Auth is not configured", { status: 500 });
   }
 
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
   const callbackUrl = `${proto}://${host}/auth/callback`;
 
   // Exchange code for token (server-to-server)
-  const tokenRes = await fetch(`${azavaUrl}/oauth/cs/token`, {
+  const tokenRes = await fetch(`${appUrl}/oauth/cs/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
     sameSite: "lax",
     path: "/",
     maxAge,
-    secure: azavaUrl.startsWith("https"),
+    secure: appUrl.startsWith("https"),
   });
 
   // Clear PKCE cookie

@@ -44,7 +44,7 @@ export class AzavaClient {
     links?: Array<{ url: string }>;
     attachments?: Attachment[];
     contentType?: ContentType;
-    overrides?: Record<string, unknown>;
+    overrides?: Record<string, unknown> & { type?: string; id?: string; properties?: Record<string, unknown> };
   }): Promise<{ success: true; payloadId: string }> {
     return this.request("/api/v1/ingest", {
       method: "POST",
