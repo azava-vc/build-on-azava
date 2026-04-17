@@ -106,24 +106,53 @@ const results = await fetch(`/api/search?q=${query}`).then(r => r.json());
 import { azava } from "@/lib/azava";
 
 const schema = await azava.schema();
-const nodes = await azava.nodes({ type: "company", search: "acme", limit: 20 });
+
 // nodes() returns { data: [...], meta: { count, offset, limit } }
+const nodes = await azava.nodes({ type: "company", search: "acme", limit: 20 });
+
+// node() returns { id, type, properties, summary, updated_at, edges }
+// — edges are included inline, so you often don't need a separate edges() call
 const node = await azava.node("node-id");
 const edges = await azava.edges("node-id");
-// Cypher supports reads and writes (MATCH, SET, CREATE, DELETE, etc.)
-// Use $paramName for parameterised values — never interpolate user input
+```
+
+### Cypher queries
+
+Cypher supports both reads and writes. Use `$paramName` for parameterised values — never interpolate user input.
+
+```typescript
+// Read
 const results = await azava.cypher(
   "MATCH (n:Company) WHERE n.stage = $stage RETURN n",
   { params: { stage: "Series A" }, limit: 50 },
 );
-// Node IDs: use `WHERE n = $id` to match by ID (not id(n) or n._id)
-// Example write:
-// azava.cypher("MATCH (t:Task) WHERE t = $id SET t.Status = $status RETURN t", { params: { id, status } })
+
+// Write — update a property
+await azava.cypher(
+  "MATCH (t:Task) WHERE t = $id SET t.Status = $status RETURN t",
+  { params: { id, status } },
+);
+
+// Write — delete a node and its edges
+await azava.cypher(
+  "MATCH (n:Task) WHERE n = $id DETACH DELETE n",
+  { params: { id } },
+);
 ```
 
-### Writing data (for jobs)
+**Important cypher notes:**
 
-**`ingest` is for unstructured data payloads only** — emails, messages, documents that Azava needs to process and extract from. Do NOT use `ingest` for simple property updates (e.g. changing a task's status). Use the appropriate REST endpoint for direct mutations.
+- **Node IDs**: `RETURN n` gives just the UUID string, not the full node. To get properties, either `RETURN n.Name, n.Status` or hydrate with `azava.node(id)`.
+- **Matching by ID**: use `WHERE n = $id` — not `id(n)` or `n._id`.
+- **Edge/node types with spaces** need backticks: `` MATCH (t:Task)-[:`Related To Org`]->(o:Organisation) ``
+- **Supported**: `MATCH`, `WHERE`, `SET`, `DETACH DELETE`, `RETURN`, `ORDER BY`, `SKIP`, `LIMIT`, `$paramName` (string/number/boolean params).
+- **Not supported**: `EXISTS { ... }` subqueries, `OPTIONAL MATCH`, array/list params. When you need these, use separate queries + client-side join.
+
+### Writing data (ingest)
+
+**`ingest` is for unstructured data payloads only** — emails, messages, documents that Azava needs to process and extract from. It feeds into an async pipeline with LLM extraction. Do NOT use `ingest` for simple property updates — use cypher `SET` for that.
+
+Different API keys can route ingest to different message types. For example, a `TASKS_API_KEY` might route to the Task message type while the main `AZAVA_API_KEY` routes to the default. Set up additional keys in the Azava platform and add them to your env.
 
 ```typescript
 import { azava } from "@/lib/azava";
@@ -137,10 +166,6 @@ await azava.ingest({
 const attachment = await azava.uploadDocument(blob, { filename: "memo.pdf", contentType: "application/pdf" });
 await azava.ingest({ title: "Memo", attachments: [attachment] });
 ```
-
-### Cypher queries
-
-Cypher supports both reads and writes — use it for property updates, node creation, etc.
 
 ## Adding a Cron Job
 
