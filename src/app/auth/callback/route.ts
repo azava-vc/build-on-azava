@@ -18,25 +18,31 @@ export async function GET(request: NextRequest) {
     return new NextResponse("Missing authorization code", { status: 400 });
   }
 
-  // Verify state from PKCE cookie
+  const baseUrl = (process.env.BASE_URL ?? request.nextUrl.origin).replace(/\/$/, "");
+
+  // Verify state from PKCE cookie — if missing or invalid, redirect to login
   const pkceCookie = request.cookies.get(PKCE_COOKIE);
   if (!pkceCookie) {
-    return new NextResponse("Missing PKCE cookie — try logging in again", { status: 400 });
+    const response = NextResponse.redirect(new URL("/auth/login", baseUrl));
+    response.cookies.delete(PKCE_COOKIE);
+    response.cookies.delete(SESSION_COOKIE);
+    return response;
   }
 
   let pkceData: { verifier: string; state: string; returnUrl?: string };
   try {
     pkceData = JSON.parse(pkceCookie.value);
   } catch {
-    return new NextResponse("Invalid PKCE cookie", { status: 400 });
+    const response = NextResponse.redirect(new URL("/auth/login", baseUrl));
+    response.cookies.delete(PKCE_COOKIE);
+    return response;
   }
 
   if (state !== pkceData.state) {
-    return new NextResponse("State mismatch — possible CSRF attack", { status: 400 });
+    const response = NextResponse.redirect(new URL("/auth/login", baseUrl));
+    response.cookies.delete(PKCE_COOKIE);
+    return response;
   }
-
-  // Build callback URL — must match what was sent in the authorize request
-  const baseUrl = (process.env.BASE_URL ?? request.nextUrl.origin).replace(/\/$/, "");
   const callbackUrl = `${baseUrl}/auth/callback`;
 
   // Exchange code for token (server-to-server)
