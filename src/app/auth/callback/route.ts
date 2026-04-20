@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
   });
 
   const returnUrl = pkceData.returnUrl ?? "/";
-  const response = NextResponse.redirect(new URL(returnUrl, request.url));
+  const response = NextResponse.redirect(new URL(returnUrl, baseUrl));
 
   response.cookies.set(SESSION_COOKIE, session, {
     httpOnly: true,
