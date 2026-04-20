@@ -223,6 +223,7 @@ AZAVA_OAUTH_CLIENT_ID=       # from: npm run register <url>
 AZAVA_OAUTH_CLIENT_SECRET=   # from: npm run register <url>
 SESSION_SECRET=              # stable random string for signing session cookies
 AZAVA_APP_URL=               # optional, defaults to https://app.azava.com — OAuth endpoints live here (not on AZAVA_API_URL)
+BASE_URL=                    # required when deployed behind a reverse proxy (e.g. https://my-tool.onrender.com)
 ```
 
 ## Commands

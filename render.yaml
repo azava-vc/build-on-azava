@@ -23,6 +23,8 @@ services:
 envVarGroups:
   - name: azava
     envVars:
+      - key: BASE_URL
+        sync: false
       - key: AZAVA_API_URL
         sync: false
       - key: AZAVA_API_KEY

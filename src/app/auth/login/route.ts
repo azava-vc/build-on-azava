@@ -16,8 +16,9 @@ export async function GET(request: NextRequest) {
 
   const returnUrl = request.nextUrl.searchParams.get("returnUrl") ?? "/";
 
-  // Build callback URL from the incoming request
-  const callbackUrl = `${request.nextUrl.origin}/auth/callback`;
+  // Build callback URL — BASE_URL is required behind reverse proxies (e.g. Render)
+  const baseUrl = (process.env.BASE_URL ?? request.nextUrl.origin).replace(/\/$/, "");
+  const callbackUrl = `${baseUrl}/auth/callback`;
 
   const params = new URLSearchParams({
     response_type: "code",
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     sameSite: "lax",
     path: "/",
     maxAge: 600,
-    secure: request.nextUrl.protocol === "https:",
+    secure: baseUrl.startsWith("https"),
   });
 
   return response;

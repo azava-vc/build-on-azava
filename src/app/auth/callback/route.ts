@@ -35,8 +35,9 @@ export async function GET(request: NextRequest) {
     return new NextResponse("State mismatch — possible CSRF attack", { status: 400 });
   }
 
-  // Build callback URL (must match what was sent in the authorize request)
-  const callbackUrl = `${request.nextUrl.origin}/auth/callback`;
+  // Build callback URL — must match what was sent in the authorize request
+  const baseUrl = (process.env.BASE_URL ?? request.nextUrl.origin).replace(/\/$/, "");
+  const callbackUrl = `${baseUrl}/auth/callback`;
 
   // Exchange code for token (server-to-server)
   const tokenRes = await fetch(`${appUrl}/oauth/cs/token`, {
@@ -82,7 +83,7 @@ export async function GET(request: NextRequest) {
     sameSite: "lax",
     path: "/",
     maxAge,
-    secure: request.nextUrl.protocol === "https:",
+    secure: baseUrl.startsWith("https"),
   });
 
   // Clear PKCE cookie
