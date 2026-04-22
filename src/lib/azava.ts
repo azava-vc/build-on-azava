@@ -9,6 +9,22 @@ interface Attachment {
   size: number;
 }
 
+export interface NodeResource {
+  id: string;
+  type: string; // "FILE" | "LINK" | ... (future-proof as string)
+  name: string | null;
+  url: string | null;
+  documentId: string | null;
+  createdAt: string;
+  startOffset: number | null;
+  endOffset: number | null;
+}
+
+export interface PresignedDownload {
+  url: string;
+  expiresIn: number; // seconds
+}
+
 export class AzavaClient {
   private baseUrl: string;
   private apiKey: string;
@@ -103,6 +119,45 @@ export class AzavaClient {
   /** Get edges for a node. */
   async edges(nodeId: string) {
     return this.request(`/api/v1/knowledge/nodes/${encodeURIComponent(nodeId)}/edges`);
+  }
+
+  /**
+   * List resources (files, links) linked to a node via `node_resource`.
+   * FILE resources carry a `documentId` that can be passed to
+   * `documentDownloadUrl()` or `documentDownloadStream()`.
+   */
+  async nodeResources(nodeId: string): Promise<{ data: NodeResource[] }> {
+    return this.request(
+      `/api/v1/knowledge/nodes/${encodeURIComponent(nodeId)}/resources`,
+    );
+  }
+
+  /**
+   * Get a short-lived presigned S3 URL for a document. Ideal for handing
+   * directly to `<object>` / `<iframe>` when page lifetime is short.
+   * Default expiry is 15 minutes.
+   */
+  async documentDownloadUrl(documentId: string): Promise<PresignedDownload> {
+    return this.request(
+      `/api/v1/knowledge/documents/${encodeURIComponent(documentId)}/download?presign=true`,
+    );
+  }
+
+  /**
+   * Stream a document's bytes directly from the API. Use for proxying through
+   * the app — useful for long-lived same-origin URLs, caching, or audit
+   * logging. Returns the raw `Response` so the caller can stream it along.
+   */
+  async documentDownloadStream(documentId: string): Promise<Response> {
+    const url = `${this.baseUrl}/api/v1/knowledge/documents/${encodeURIComponent(documentId)}/download`;
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${this.apiKey}` },
+    });
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      throw new Error(`Azava API ${response.status}: ${url} — ${body}`);
+    }
+    return response;
   }
 }
 

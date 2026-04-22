@@ -133,6 +133,15 @@ await azava.cypher(
   { params: { id, status } },
 );
 
+// Write — create a node + edge in one query (idempotent via MERGE)
+await azava.cypher(
+  `MATCH (a:Company), (b:Investor)
+   WHERE a = $companyId AND b = $investorId
+   MERGE (a)-[:\`Backed By\`]->(b)
+   RETURN a`,
+  { params: { companyId, investorId } },
+);
+
 // Write — delete a node and its edges
 await azava.cypher(
   "MATCH (n:Task) WHERE n = $id DETACH DELETE n",
@@ -145,8 +154,9 @@ await azava.cypher(
 - **Node IDs**: `RETURN n` gives just the UUID string, not the full node. To get properties, either `RETURN n.Name, n.Status` or hydrate with `azava.node(id)`.
 - **Matching by ID**: use `WHERE n = $id` — not `id(n)` or `n._id`.
 - **Edge/node types with spaces** need backticks: `` MATCH (t:Task)-[:`Related To Org`]->(o:Organisation) ``
-- **Supported**: `MATCH`, `WHERE`, `SET`, `DETACH DELETE`, `RETURN`, `ORDER BY`, `SKIP`, `LIMIT`, `$paramName` (string/number/boolean params).
-- **Not supported**: `EXISTS { ... }` subqueries, `OPTIONAL MATCH`, array/list params. When you need these, use separate queries + client-side join.
+- **Multi-node MATCH** works with comma-separated patterns in a single clause: `MATCH (a:X), (b:Y) WHERE ... MERGE (a)-[:R]->(b)`. Chained `MATCH ... WITH ... MATCH` is **not** supported — combine patterns into one `MATCH` instead.
+- **Supported keywords**: `MATCH`, `WHERE`, `SET`, `CREATE`, `MERGE`, `DETACH DELETE`, `DELETE`, `RETURN`, `ORDER BY`, `SKIP`, `LIMIT`, `OPTIONAL MATCH`, `EXISTS { ... }` subqueries, `$paramName` (string/number/boolean/array params).
+- **Creating new properties or edge types via `SET` / `CREATE` / `MERGE`** requires the property/edge type to be registered in the Azava schema. Unknown names produce a 500 — add them via the platform schema config first.
 
 ### Writing data (ingest)
 
@@ -166,6 +176,32 @@ await azava.ingest({
 const attachment = await azava.uploadDocument(blob, { filename: "memo.pdf", contentType: "application/pdf" });
 await azava.ingest({ title: "Memo", attachments: [attachment] });
 ```
+
+### Node resources and documents
+
+Nodes (Deals, Messages, Organisations, etc.) can have structured resources attached — files extracted during ingest, or external links — exposed via a dedicated endpoint rather than buried in the Summary text.
+
+```typescript
+// List everything attached to a node. `type` is typically "FILE" or "LINK".
+// FILE resources carry a `documentId` that can be downloaded.
+const { data } = await azava.nodeResources(dealId);
+
+// Get a short-lived (~15 min) presigned S3 URL — ideal for handing straight
+// to <object> / <iframe> when the page lifetime is short.
+const { url, expiresIn } = await azava.documentDownloadUrl(documentId);
+
+// Stream the bytes through your server — useful when you want a stable,
+// same-origin URL for long-lived sessions or to add caching/audit layers.
+const upstream = await azava.documentDownloadStream(documentId);
+return new Response(upstream.body, {
+  headers: { "Content-Type": upstream.headers.get("content-type") ?? "application/octet-stream" },
+});
+```
+
+Two common patterns:
+
+- **Simple preview**: fetch the presigned URL server-side and pass it to the client — one extra round-trip per document, zero bandwidth through your app.
+- **Same-origin preview**: add an `/api/documents/[id]/route.ts` proxy that calls `documentDownloadStream()` — the `<object>` in the client uses a stable path that works beyond the 15-min presign expiry and inherits the user session for attribution.
 
 ## Adding a Cron Job
 
